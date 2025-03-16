@@ -1,0 +1,67 @@
+#include <WiFi.h>
+#include <WebServer.h>
+#include <esp_wifi.h>
+
+
+const char* ssid = "FreeWifi";  
+const char* password = "123456789"; 
+
+WebServer server(80); 
+
+void setup() {
+  Serial.begin(115200);
+  delay(1000);
+
+ 
+  Serial.println("Access Point oluşturuluyor...");
+  WiFi.softAP(ssid, password);
+
+  IPAddress IP = WiFi.softAPIP();
+  Serial.print("Access Point IP Adresi: ");
+  Serial.println(IP);
+
+  server.on("/", HTTP_GET, handleRoot);  
+  server.begin();
+  Serial.println("Web sunucusu başlatıldı!");
+}
+
+void loop() {
+  server.handleClient(); 
+}
+
+
+void handleRoot() {
+  String html = "<!DOCTYPE html><html><head>";
+  html += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
+  html += "<style>";
+  html += "body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f4; }";
+  html += "h1 { color: #333; }";
+  html += "ul { list-style-type: none; padding: 0; }";
+  html += "li { background: white; margin: 10px; padding: 15px; border-radius: 8px; box-shadow: 0px 0px 10px rgba(0,0,0,0.1); }";
+  html += "</style></head><body>";
+  
+  html += "<h1>Bağlı Cihazlar</h1>";
+  html += "<p>Bağlı cihaz sayısı: <strong>" + String(WiFi.softAPgetStationNum()) + "</strong></p>";
+  
+  html += "<ul>";
+
+  
+  wifi_sta_list_t stationList;
+  esp_wifi_ap_get_sta_list(&stationList);
+
+  for (int i = 0; i < stationList.num; i++) {
+    char macStr[18];
+    sprintf(macStr, "%02X:%02X:%02X:%02X:%02X:%02X",
+            stationList.sta[i].mac[0], stationList.sta[i].mac[1], stationList.sta[i].mac[2],
+            stationList.sta[i].mac[3], stationList.sta[i].mac[4], stationList.sta[i].mac[5]);
+
+    html += "<li><strong>MAC:</strong> ";
+    html += String(macStr);
+    html += "</li>";
+  }
+  
+  html += "</ul>";
+  html += "</body></html>";
+
+  server.send(200, "text/html", html);
+}
